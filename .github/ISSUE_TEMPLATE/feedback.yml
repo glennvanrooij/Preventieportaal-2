@@ -64,35 +64,3 @@ body:
         2. Klik op ...
         3. Zie foutmelding ...
       render: bash
-    validations:
-      required: false
-
-  - type: textarea
-    id: verwacht
-    attributes:
-      label: "Verwacht resultaat"
-      placeholder: "Wat had je verwacht dat er zou gebeuren?"
-    validations:
-      required: false
-
-  - type: textarea
-    id: werkelijk
-    attributes:
-      label: "Werkelijk resultaat / foutmelding"
-      placeholder: "Wat gebeurde er daadwerkelijk (inclusief eventuele foutmeldingen)?"
-    validations:
-      required: false
-
-  - type: input
-    id: url
-    attributes:
-      label: "URL"
-      description: "Eventuele publieke link (indien van toepassing)."
-      placeholder: "https://…"
-    validations:
-      required: false
-
-  - type: textarea
-    id: extra
-    attributes:
-      label: "Bijlagen / extra cont
