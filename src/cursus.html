@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Inloggen – Preventieportal</title>
+  <meta name="description" content="Demo-loginpagina voor de Preventieportal (trainingsdoeleinden)." />
+
+  <!-- Preload logo voor snellere weergave -->
+  <link rel="preload" as="image" href="https://deduik.com/wp-content/uploads/2020/02/achmea-logo-e1627899420163.png" />
+
+  <!-- MSAL 2.x -->
+  <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
+
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' };
+  </script>
+
+  <style>
+    /* Kleine utility: fade-in en focus */
+    .fade-enter { opacity: 0; transition: opacity .4s ease; }
+    .fade-enter.show { opacity: 1; }
+    .navlink:focus-visible { outline: 2px solid rgba(148,163,184,.9); outline-offset: 2px; border-radius: .5rem; }
+  </style>
+</head>
+
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans">
+  <!-- PORTAL HEADER -->
+  <header class="bg-white/10 dark:bg-slate-900/30 border-b border-slate-200/50 dark:border-slate-700/60">
+    <div class="max-w-5xl mx-auto px-4 sm:px-8">
+      <nav aria-label="Primaire navigatie" class="flex items-center justify-between gap-4 py-4">
+        <a href="index.html" class="flex items-center gap-3 font-bold navlink" aria-label="Naar startpagina Preventieportal">
+          <img
+            src="https://deduik.com/wp-content/uploads/2020/02/achmea-logo-e1627899420163.png"
+            alt="Achmea logo"
+            width="40" height="40"
+            fetchpriority="high" decoding="async"
+            class="w-10 h-10 rounded-md border border-black/10 bg-white object-contain p-0.5"
+          />
+          <span>Preventieportal</span>
+        </a>
+        <ul class="flex items-center gap-2 sm:gap-3">
+          <li><a href="index.html" class="navlink px-3 py-2 rounded-md hover:bg-white/20 dark:hover:bg-white/10">Home</a></li>
+          <li><a href="firepagina.html" class="navlink px-3 py-2 rounded-md hover:bg-white/20 dark:hover:bg-white/10">Brand</a></li>
+          <li><a href="contact.html" class="navlink px-3 py-2 rounded-md hover:bg-white/20 dark:hover:bg-white/10">Contact</a></li>
+          <li><a href="login.html" aria-current="page" class="navlink px-3 py-2 rounded-md bg-white/30 dark:bg-white/10">Inloggen</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- PAGE CONTAINER -->
+  <div id="appContainer" class="max-w-5xl mx-auto p-4 sm:p-8">
+    <!-- Training-utility header (toont na inloggen) -->
+    <section id="appHeader" class="hidden flex justify-between items-center mb-8 pb-4 border-b border-slate-200 dark:border-slate-700">
+      <h1 class="text-2xl font-bold text-slate-700 dark:text-slate-100">GitHub Masterclass</h1>
+      <div class="flex items-center gap-3">
+        <!-- GroupID -->
+        <div class="hidden sm:flex items-center gap-2">
+          <label for="groupIdInput" class="text-sm text-slate-600 dark:text-slate-300">GroupID</label>
+          <input id="groupIdInput" type="text" placeholder="bv. team-a"
+                 class="text-sm px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+          <button id="saveGroupBtn" class="text-xs px-2 py-1 rounded bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600">
+            Save
+          </button>
+        </div>
+
+        <!-- Dark mode toggle -->
+        <button id="themeToggle"
+                class="text-sm px-3 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 transition"
+                title="Wissel licht/donker">🌙</button>
+
+        <!-- Profiel -->
+        <div id="userProfile" class="flex items-center gap-3">
+          <span id="userName" class="font-semibold text-slate-600 dark:text-slate-200 hidden sm:block"></span>
+          <img id="avatar" alt="Profielfoto" class="w-12 h-12 rounded-full border-2 border-white shadow-md" />
+        </div>
+
+        <!-- Uitlogknop -->
+        <button id="logoutBtn"
+                onclick="signOut()"
+                class="text-sm px-3 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 transition">
+          Uitloggen
+        </button>
+      </div>
+    </section>
+
+    <!-- MAIN -->
+    <main id="mainContent">
+      <!-- Login kaart -->
+      <div id="loginContainer" class="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-8 text-center transition-opacity duration-500">
+        <h1 class="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">Welkom bij de GitHub Cursus</h1>
+        <p class="text-slate-600 dark:text-slate-300 mb-6">Log in met je Microsoft-account om te beginnen.</p>
+
+        <button id="loginBtn"
+                onclick="signIn()"
+                class="w-full sm:w-auto bg-indigo-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-indigo-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          Inloggen met Microsoft
+        </button>
+
+        <div id="welcome" class="mt-4 text-sm text-slate-500"></div>
+      </div>
+
+      <!-- Course container -->
+      <div id="courseContainer" class="hidden transition-opacity duration-500">
+        <div class="mb-6">
+          <div class="flex justify-between items-center mb-2">
+            <h2 class="text-xl font-bold text-slate-700 dark:text-slate-100">Jouw Voortgang</h2>
+            <span id="progressText" class="text-sm font-semibold text-slate-600 dark:text-slate-300">0% voltooid</span>
+          </div>
+          <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
+            <div id="progressBar" class="bg-green-500 h-3 rounded-full transition-all duration-500" style="width:0%"></div>
+          </div>
+        </div>
+
+        <!-- Gamification HUD -->
+        <div class="grid sm:grid-cols-3 gap-3 mb-6">
+          <div class="bg-white dark:bg-slate-800 rounded-xl shadow p-4">
+            <div class="text-sm text-slate-500 dark:text-slate-300">Level</div>
+            <div id="levelText" class="text-2xl font-bold">1</div>
+          </div>
+          <div class="bg-white dark:bg-slate-800 rounded-xl shadow p-4">
+            <div class="text-sm text-slate-500 dark:text-slate-300">XP</div>
+            <div class="flex items-center gap-2">
+              <div id="xpText" class="text-2xl font-bold">0</div>
+              <div id="xpNext" class="text-sm text-slate-500 dark:text-slate-400">(0/100)</div>
+            </div>
+            <div class="mt-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+              <div id="xpBar" class="bg-indigo-600 h-2 rounded-full transition-all duration-500" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="bg-white dark:bg-slate-800 rounded-xl shadow p-4">
+            <div class="text-sm text-slate-500 dark:text-slate-300">Badges</div>
+            <div id="badges" class="mt-1 flex flex-wrap gap-2"></div>
+          </div>
+        </div>
+
+        <!-- Leaderboard (optioneel, toont alleen bij GroupID) -->
+        <div id="leaderboardCard" class="hidden bg-white dark:bg-slate-800 rounded-xl shadow p-4 mb-6">
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="text-lg font-bold">Leaderboard</h3>
+            <div class="text-sm text-slate-500 dark:text-slate-300">Groep: <span id="groupIdLabel">—</span></div>
+          </div>
+          <div id="leaderboardBody" class="text-sm text-slate-700 dark:text-slate-200">Laden…</div>
+        </div>
+
+        <!-- Snelle acties -->
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-sm text-slate-600 dark:text-slate-300">Gebruik de checkboxes om je voortgang bij te houden.</div>
+          <div class="flex gap-2">
+            <button id="btnAllOn"  class="text-xs px-3 py-1 rounded bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600">Alles aanvinken</button>
+            <button id="btnAllOff" class="text-xs px-3 py-1 rounded bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600">Alles uit</button>
+            <button id="btnReset"  class="text-xs px-3 py-1 rounded bg-red-500 text-white hover:bg-red-600">Reset</button>
+          </div>
+        </div>
+
+        <div id="modulesContainer" class="space-y-6"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="mt-10 border-t border-slate-200 dark:border-slate-700">
+    <div class="max-w-5xl mx-auto px-4 sm:px-8 py-6 text-sm text-slate-600 dark:text-slate-300">
+      © <span id="y"></span> Preventieportal – Trainingsdemo. Geen echte accounts of opslag.
+    </div>
+  </footer>
+
+  <!-- Course data -->
+  <script>
+    const courseData = [
+      {
+        title: "Module 1: De Fundamenten",
+        exercises: [
+          {
+            id: "ex1-1",
+            title: "Je Project Starten",
+            details: `<ol class="list-decimal list-inside mt-2 space-y-2 text-sm">
+              <li>Maak een repository <code>github-welkomstpagina</code>.</li>
+              <li>Clone de repository: <code>git clone [URL]</code>.</li>
+              <li>Voeg dit <code>index.html</code>-bestand toe.</li>
+              <li>Stage & commit: <code>git add .</code> en <code>git commit -m "Initiële commit"</code>.</li>
+              <li>Push naar GitHub: <code>git push origin main</code>.</li>
+            </ol>`
+          }
+        ]
+      },
+      {
+        title: "Module 2: Branching & Samenwerken",
+        exercises: [
+          {
+            id: "ex2-1",
+            title: "Een Feature Branch Gebruiken",
+            details: `<ol class="list-decimal list-inside mt-2 space-y-2 text-sm">
+              <li>Maak een branch: <code>git checkout -b feature/styling</code>.</li>
+              <li>Pas een CSS class aan (bv. de knopkleur).</li>
+              <li>Commit en push de nieuwe branch.</li>
+              <li>Open een Pull Request (PR) op GitHub.</li>
+              <li>Merge de PR en verwijder de branch.</li>
+            </ol>`
+          }
+        ]
+      },
+      {
+        title: "Module 3: Projectmanagement met Issues",
+        exercises: [
+          {
+            id: "ex3-1",
+            title: "Een Bug Melden en Oplossen",
+            details: `<ol class="list-decimal list-inside mt-2 space-y-2 text-sm">
+              <li>Maak op GitHub een Issue aan met de titel "Standaard avatar is niet zichtbaar bij ophaalfout".</li>
+              <li>Wijs de issue aan jezelf toe en voeg het label "bug" toe.</li>
+              <li>Maak lokaal een nieuwe branch: <code>git checkout -b fix/avatar-bug</code>.</li>
+              <li>Commit een oplossing voor de "bug".</li>
+              <li>Open een Pull Request en vermeld <code>Closes #[issue nummer]</code> in de beschrijving.</li>
+              <li>Merge de Pull Request.</li>
+            </ol>`
+          }
+        ]
+      },
+      {
+        title: "Module 4: Publiceren met GitHub Pages",
+        exercises: [
+          {
+            id: "ex4-1",
+            title: "De Website Live Zetten",
+            details: `<ol class="list-decimal list-inside mt-2 space-y-2 text-sm">
+              <li>Ga naar "Settings" > "Pages" in je repository.</li>
+              <li>Selecteer de <code>main</code> branch als bron en klik op "Save".</li>
+              <li>Wacht een paar minuten en bezoek de gepubliceerde URL.</li>
+            </ol>`
+          }
+        ]
+      },
+      {
+        title: "Module 5: Automatisering met Actions",
+        exercises: [
+          {
+            id: "ex5-1",
+            title: "Automatische Deployment",
+            details: `<div class="mt-2 text-sm space-y-2">
+              <p>Maak het bestand <code>.github/workflows/deploy.yml</code> aan met de volgende inhoud:</p>
+              <pre class="bg-slate-800 text-slate-200 p-4 rounded-md mt-2 overflow-x-auto text-xs"><code>name: Deploy to GitHub Pages
+on:
+  push:
+    branches: [ main ]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: \${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./</code></pre>
+              <p>Commit en push dit bestand om de workflow te activeren.</p>
+            </div>`
+          }
+        ]
+      }
+    ];
+  </script>
+
+  <!-- App logic -->
+  <script>
+    /*********************
+     * CONFIG
+     *********************/
+    const flowUrl = "https://34d49573993ee3fcb09188f1bbc7fc.5b.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/a2f9e78f8fc343cf8ac59c2a279b3d6f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=O-YetoYj790cQFWSGEVjJob6Enr8YE4Rp1gT_WtXLU8";
+
+    /* 🔧 Multitenant: gebruik 'organizations' of 'common' (geen tenant-GUID) */
+    const msalConfig = {
+      auth: {
+        clientId: "c5e9d6f9-9a26-46f2-97f4-2352d2f72bb7",
+        authority: "https://login.microsoftonline.com/organizations", // multitenant
+        redirectUri: window.location.origin  // zorg dat deze exact in de App Registration staat (SPA)
+      },
+      cache: {
+        cacheLocation: "sessionStorage",
+        storeAuthStateInCookie: false
+      }
+    };
+
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+    const progressKey = "githubCourseProgress";
+
+    /*********************
+     * Rendering course
+     *********************/
+    function renderCourse(data) {
+      const container = document.getElementById("modulesContainer");
+      container.innerHTML = data.map(module => `
+        <div class="module bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6">
+          <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">${module.title}</h3>
+          ${module.exercises.map(ex => `
+            <div class="exercise flex items-start gap-4 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/40">
+              <input type="checkbox" id="${ex.id}" class="h-6 w-6 mt-1 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer" />
+              <div class="flex-1">
+                <label for="${ex.id}" class="font-semibold text-lg cursor-pointer">${ex.title}</label>
+                <details class="mt-2 text-slate-600 dark:text-slate-300 group">
+                  <summary class="flex items-center justify-between text-sm font-semibold cursor-pointer list-none">
+                    <span>Toon stappen</span>
+                    <svg class="w-4 h-4 transition-transform duration-300 group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </summary>
+                  ${ex.details}
+                </details>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `).join("");
+    }
+
+    /*********************
+     * Progress
+     *********************/
+    function updateProgressBar() {
+      const checkboxes = document.querySelectorAll('#courseContainer input[type="checkbox"]');
+      const checkedCount = checkboxes.length ? [...checkboxes].filter(cb => cb.checked).length : 0;
+      const percentage = checkboxes.length > 0 ? (checkedCount / checkboxes.length) * 100 : 0;
+      document.getElementById("progressBar").style.width = `${percentage}%`;
+      document.getElementById("progressText").textContent = `${Math.round(percentage)}% voltooid`;
+    }
+
+    function saveProgress() {
+      const checkboxes = document.querySelectorAll('#courseContainer input[type="checkbox"]');
+      const progress = {};
+      checkboxes.forEach(cb => { progress[cb.id] = cb.checked; });
+      localStorage.setItem(progressKey, JSON.stringify(progress));
+      updateProgressBar();
+    }
+
+    function loadProgress() {
+      const savedProgress = JSON.parse(localStorage.getItem(progressKey) || "{}");
+      for (const id in savedProgress) {
+        const checkbox = document.getElementById(id);
+        if (checkbox) checkbox.checked = savedProgress[id];
+      }
+      updateProgressBar();
+    }
+
+    function setupEventListeners() {
+      document.querySelectorAll('#courseContainer input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener("change", saveProgress);
+      });
+    }
+
+    function checkAll(v = true) {
+      document.querySelectorAll('#courseContainer input[type="checkbox"]').forEach(cb => cb.checked = v);
+      saveProgress();
+    }
+
+    function resetProgress() {
+      localStorage.removeItem(progressKey);
+      loadProgress();
+    }
+
+    document.addEventListener("click", e => {
+      if (e.target.id === "btnAllOn")  checkAll(true);
+      if (e.target.id === "btnAllOff") checkAll(false);
+      if (e.target.id === "btnReset")  resetProgress();
+      if (e.target.id === "themeToggle") {
+        const isDark = document.documentElement.classList.contains("dark");
+        applyTheme(isDark ? "light" : "dark");
+      }
+      if (e.target.id === "saveGroupBtn") {
+        const val = (document.getElementById("groupIdInput")?.value || "").trim();
+        localStorage.setItem(groupKey, val);
+        document.getElementById("groupIdLabel").textContent = val || "—";
+        if (val) showLeaderboard(val); else hideLeaderboard();
+      }
+    });
+
+    /*********************
+     * Auth + Graph helpers
+     *********************/
+    async function signIn() {
+      try {
+        /* 🔑 Multitenant login + accountkeuze */
+        const loginResponse = await msalInstance.loginPopup({
+          authority: "https://login.microsoftonline.com/organizations",
+          scopes: ["User.Read"],
+          prompt: "select_account"
+        });
+        const account = loginResponse.account;
+
+        // UI: naar cursus
+        document.getElementById("welcome").textContent = "Inloggen gelukt. Profiel laden…";
+        renderCourse(courseData);
+        setupEventListeners();
+        loadProgress();
+
+        document.getElementById("loginContainer").classList.add("hidden");
+        document.getElementById("appHeader").classList.remove("hidden");
+        document.getElementById("courseContainer").classList.remove("hidden");
+
+        // Token: silent → fallback popup
+        let tokenResponse;
+        try {
+          tokenResponse = await msalInstance.acquireTokenSilent({ scopes: ["User.Read"], account });
+        } catch {
+          tokenResponse = await msalInstance.acquireTokenPopup({ scopes: ["User.Read"], account });
+        }
+
+        await collectAndSendUserData(loginResponse, tokenResponse.accessToken);
+
+        // Init UI pieces die tenant/group nodig hebben
+        initGroupIdUI();
+        updateGamificationAndSync();
+
+      } catch (error) {
+        console.error("Login mislukt:", error);
+        document.getElementById("welcome").textContent = "Login mislukt. Probeer het opnieuw.";
+      }
+    }
+
+    // fetch met timeout + retries (exponential backoff)
+    async function safeFetch(url, options = {}, { timeoutMs = 8000, retries = 2 } = {}) {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const res = await fetch(url, { ...options, signal: controller.signal });
+          clearTimeout(id);
+          if (res.ok) return res;
+          if ([429, 500, 502, 503, 504].includes(res.status) && attempt < retries) {
+            await new Promise(r => setTimeout(r, 400 * Math.pow(2, attempt)));
+            continue;
+          }
+          throw new Error(`HTTP ${res.status}`);
+        } catch (e) {
+          clearTimeout(id);
+          if (attempt === retries) throw e;
+          await new Promise(r => setTimeout(r, 400 * Math.pow(2, attempt)));
+        }
+      }
+    }
+
+    async function signOut() {
+      try {
+        await msalInstance.logoutPopup({ postLogoutRedirectUri: window.location.origin });
+      } catch (e) {
+        console.warn("logoutPopup mislukt, fallback naar redirect:", e);
+        msalInstance.logoutRedirect({ postLogoutRedirectUri: window.location.origin });
+        return;
+      } finally {
+        // UI terug naar login
+        document.getElementById("appHeader").classList.add("hidden");
+        document.getElementById("courseContainer").classList.add("hidden");
+        document.getElementById("loginContainer").classList.remove("hidden");
+        // Profielvelden resetten
+        const avatar = document.getElementById("avatar");
+        const userNameEl = document.getElementById("userName");
+        if (avatar) avatar.removeAttribute("src");
+        if (userNameEl) userNameEl.textContent = "";
+      }
+    }
+
+    async function collectAndSendUserData(loginResponse, accessToken) {
+      const account = loginResponse?.account || null;
+      const idt = loginResponse?.idTokenClaims || {};
+      const headers = { Authorization: `Bearer ${accessToken}` };
+
+      // 1) Profiel uit Graph
+      const selectUser = "displayName,userPrincipalName,jobTitle,officeLocation,department,id";
+      const profileUrl = `https://graph.microsoft.com/v1.0/me?$select=${selectUser}`;
+
+      let name = account?.name || "";
+      let email = account?.username || "";
+      let jobTitle = "N/A";
+      let officeLocation = "";
+      let department = "";
+      let oid = "";
+      let tenantId = idt?.tid || "unknown"; // 🔹 dynamisch uit token (multitenant-correct)
+
+      try {
+        const res = await safeFetch(profileUrl, { headers });
+        const p = await res.json();
+        name = p.displayName || name || "Deelnemer";
+        email = p.userPrincipalName || email || "";
+        jobTitle = p.jobTitle || "N/A";
+        officeLocation = p.officeLocation || "";
+        department = p.department || "";
+        oid = p.id || "";
+      } catch (e) {
+        console.warn("Profiel ophalen mislukt:", e);
+      }
+
+      // 2) Foto 96x96 (base64) + UI update
+      const avatar = document.getElementById("avatar");
+      const userNameEl = document.getElementById("userName");
+      if (userNameEl) userNameEl.textContent = name;
+
+      let photoBase64 = "";
+      try {
+        const photoRes = await safeFetch("https://graph.microsoft.com/v1.0/me/photos/96x96/$value", { headers });
+        const blob = await photoRes.blob();
+        const reader = new FileReader();
+        photoBase64 = await new Promise((resolve, reject) => {
+          reader.onloadend = () => resolve((reader.result || "").toString().split(",")[1] || "");
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        avatar.src = `data:image/png;base64,${photoBase64}`;
+      } catch (e) {
+        console.warn("Foto ophalen mislukt, toon initiaal-avatar:", e);
+        const init = (name?.trim()?.[0] || "U").toUpperCase();
+        avatar.src = `https://via.placeholder.com/64/4f46e5/ffffff?text=${encodeURIComponent(init)}`;
+      }
+
+      // 3) Extra context voor Flow
+      const correlationId = crypto.getRandomValues(new Uint32Array(1))[0].toString(16);
+      const timestamp = new Date().toISOString();
+      const preferredLanguage = navigator.language || "";
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+
+      // 4) bewaar naam/email voor leaderboard stats
+      window._userName = name?.trim();
+      window._userEmail = email?.trim();
+
+      // 5) Stuur naar Flow
+      await sendToFlow({
+        name: window._userName,
+        email: window._userEmail,
+        jobTitle: jobTitle?.trim(),
+        officeLocation: officeLocation?.trim(),
+        department: department?.trim(),
+        photoBase64,
+        oid,
+        tenantId,            // 🔹 nu correct per tenant
+        preferredLanguage,
+        timeZone,
+        correlationId,
+        timestamp
+      });
+    }
+
+    async function sendToFlow(payload) {
+      try {
+        const res = await fetch(flowUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const ct = res.headers.get("content-type") || "";
+        if (ct.includes("application/json")) {
+          return await res.json();
+        }
+        return null;
+      } catch (error) {
+        console.error("Verzenden naar Power Automate mislukt:", error);
+        return null;
+      }
+    }
+
+    /*********************
+     * THEME
+     *********************/
+    const themeKey = "githubCourseTheme";
+    function applyTheme(theme) {
+      const root = document.documentElement;
+      if (theme === "dark") root.classList.add("dark"); else root.classList.remove("dark");
+      localStorage.setItem(themeKey, theme);
+      const btn = document.getElementById("themeToggle");
+      if (btn) btn.textContent = theme === "dark" ? "☀️" : "🌙";
+    }
+    function initTheme() {
+      const stored = localStorage.getItem(themeKey);
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(stored || (prefersDark ? "dark" : "light"));
+    }
+    initTheme();
+
+    /*********************
+     * GROUP / LEADERBOARD
+     *********************/
+    const groupKey = "githubCourseGroupId";
+    function getQueryParam(name) {
+      const p = new URLSearchParams(window.location.search);
+      return p.get(name);
+    }
+    function initGroupIdUI() {
+      const fromUrl = getQueryParam("group");
+      const stored = localStorage.getItem(groupKey);
+      const groupId = (fromUrl || stored || "").trim();
+      const input = document.getElementById("groupIdInput");
+      const label = document.getElementById("groupIdLabel");
+      if (input) input.value = groupId;
+      if (label) label.textContent = groupId || "—";
+      if (groupId) {
+        localStorage.setItem(groupKey, groupId);
+        showLeaderboard(groupId);
+      }
+    }
+    function hideLeaderboard() {
+      document.getElementById("leaderboardCard")?.classList.add("hidden");
+    }
+    async function showLeaderboard(groupId) {
+      const card = document.getElementById("leaderboardCard");
+      const body = document.getElementById("leaderboardBody");
+      if (!card || !body) return;
+      card.classList.remove("hidden");
+      body.textContent = "Laden…";
+      try {
+        const url = flowUrl + "&mode=leaderboard&groupId=" + encodeURIComponent(groupId);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const json = await res.json().catch(() => []);
+        if (!Array.isArray(json) || json.length === 0) {
+          body.textContent = "Nog geen data in deze groep.";
+          return;
+        }
+        body.innerHTML = `
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-left">
+              <thead>
+                <tr>
+                  <th class="py-1 pr-4">#</th>
+                  <th class="py-1 pr-4">Naam</th>
+                  <th class="py-1 pr-4">Level</th>
+                  <th class="py-1 pr-4">XP</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${json.map((r, i) => `
+                  <tr class="${i % 2 ? 'opacity-90' : ''}">
+                    <td class="py-1 pr-4">${i+1}</td>
+                    <td class="py-1 pr-4">${(r.name || '-')}</td>
+                    <td class="py-1 pr-4">${(r.level ?? '-')}</td>
+                    <td class="py-1 pr-4">${(r.xp ?? '-')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } catch (err) {
+        console.warn("Leaderboard laden faalde:", err);
+        body.textContent = "Leaderboard niet beschikbaar.";
+      }
+    }
+
+    /*********************
+     * GAMIFICATION
+     *********************/
+    const xpKey = "githubCourseXP";
+    const badgeKey = "githubCourseBadges";
+    const xpPerExercise = 10;
+    const xpPerLevel = 100;
+
+    function computeXPFromProgress(progressObj) {
+      const vals = Object.values(progressObj || {});
+      const checked = vals.filter(Boolean).length;
+      return checked * xpPerExercise;
+    }
+    function levelFromXP(xp) {
+      return Math.max(1, Math.floor(xp / xpPerLevel) + 1);
+    }
+    function xpWithinLevel(xp) {
+      return xp % xpPerLevel;
+    }
+
+    function loadBadges() {
+      try { return JSON.parse(localStorage.getItem(badgeKey) || "[]"); } catch { return []; }
+    }
+    function saveBadges(badges) {
+      localStorage.setItem(badgeKey, JSON.stringify(badges || []));
+    }
+    function detectBadges(progressObj) {
+      const have = loadBadges();
+      const ids = new Set(have.map(b => b.id));
+      // Voorbeeld badge: alle ex2-* voltooid
+      const ex2 = Object.keys(progressObj || {}).filter(k => k.startsWith("ex2-"));
+      const allEx2Done = ex2.length > 0 && ex2.every(k => !!progressObj[k]);
+      if (allEx2Done && !ids.has("branch-master")) {
+        have.push({ id: "branch-master", name: "Branch Master 🏆", earnedAt: new Date().toISOString() });
+      }
+      return have;
+    }
+
+    function renderBadges(badges) {
+      const el = document.getElementById("badges");
+      if (!el) return;
+      if (!badges || badges.length === 0) {
+        el.innerHTML = `<span class="text-slate-500 dark:text-slate-300 text-sm">Nog geen badges</span>`;
+        return;
+      }
+      el.innerHTML = badges.map(b => `
+        <span class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-300/50">
+          ${b.name}
+        </span>
+      `).join("");
+    }
+
+    function renderXP(xp) {
+      const lvl = levelFromXP(xp);
+      const inLevel = xpWithinLevel(xp);
+      const pct = Math.min(100, Math.round((inLevel / xpPerLevel) * 100));
+      const xpText = document.getElementById("xpText");
+      const xpNext = document.getElementById("xpNext");
+      const xpBar  = document.getElementById("xpBar");
+      const levelText = document.getElementById("levelText");
+      if (xpText) xpText.textContent = xp;
+      if (xpNext) xpNext.textContent = `(${inLevel}/${xpPerLevel})`;
+      if (xpBar)  xpBar.style.width = pct + "%";
+      if (levelText) levelText.textContent = lvl;
+    }
+
+    function getProgressObj() {
+      try { return JSON.parse(localStorage.getItem(progressKey) || "{}"); } catch { return {}; }
+    }
+
+    function updateGamificationAndSync() {
+      const progress = getProgressObj();
+      const xp = computeXPFromProgress(progress);
+      const badges = detectBadges(progress);
+      saveBadges(badges);
+      localStorage.setItem(xpKey, String(xp));
+      renderXP(xp);
+      renderBadges(badges);
+
+      const groupId = localStorage.getItem(groupKey) || "";
+      if (groupId) {
+        postStatsToFlow({ xp, level: levelFromXP(xp), badges, groupId });
+      }
+    }
+
+    async function postStatsToFlow({ xp, level, badges, groupId }) {
+      const name = (window._userName || document.getElementById("userName")?.textContent || "").trim();
+      const email = (window._userEmail || "").trim();
+      const payload = {
+        mode: "stats",
+        groupId,
+        name,
+        email,
+        xp,
+        level,
+        badges,
+        progressPct: (() => {
+          const cbs = document.querySelectorAll('#courseContainer input[type="checkbox"]');
+          const checked = [...cbs].filter(cb => cb.checked).length;
+          const pct = cbs.length ? Math.round((checked / cbs.length) * 100) : 0;
+          return pct;
+        })()
+      };
+      try {
+        await fetch(flowUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      } catch (e) {
+        console.warn("Stats post mislukt:", e);
+      }
+    }
+
+    // Hooks om gamification te koppelen (veilig ook als deze niet bestaan)
+    const _origSaveProgress = window.saveProgress;
+    window.saveProgress = function() {
+      if (_origSaveProgress) _origSaveProgress();
+      updateGamificationAndSync();
+    };
+    const _origLoadProgress = window.loadProgress;
+    window.loadProgress = function() {
+      if (_origLoadProgress) _origLoadProgress();
+      updateGamificationAndSync();
+    };
+
+    // Footer-jaar
+    document.getElementById('y').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
